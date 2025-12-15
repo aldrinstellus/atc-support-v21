@@ -1,48 +1,27 @@
 'use client';
 
-import Image from 'next/image';
-import { ModeSwitcher } from './ModeSwitcher';
-
 /**
- * CTIS Logo Component
+ * ATC Logo Component
  *
- * Displays the CTIS (Customer Technology & Information Services) branding
- * with mode switcher in the application sidebar.
+ * Displays the ATC branding with "atc." text logo and red dot
+ * in the application sidebar.
  *
- * V17 Mode Switcher - Government/Project mode toggle
- * V19 - Theme-aware logo switching using CSS (instant, no flicker)
- *
- * Both logos are preloaded and CSS controls visibility based on theme class.
- * This eliminates network lag and hydration flicker.
+ * V21 - Replaced CTIS image logo with ATC text logo
+ * - Left-aligned instead of center-aligned
+ * - Theme-aware: black text in light mode, white text in dark mode
+ * - Red dot accent (#EF4444)
+ * - ModeSwitcher archived to archive/src-backups/mode-switcher/
  */
 
 export const CTISLogo = () => {
   return (
-    <div className="flex-shrink-0 px-3 pt-3 pb-3 space-y-2">
-      {/* CTIS Logo - Both versions rendered, CSS controls visibility */}
-      <div className="flex items-center justify-center py-2 relative h-10">
-        {/* Dark theme logo - shown when .dark class is on html */}
-        <Image
-          src="/ctis-logo-dark.png"
-          alt="CTIS Logo"
-          width={160}
-          height={40}
-          className="h-10 w-auto object-contain dark:block hidden"
-          priority
-        />
-        {/* Light theme logo - shown when .light class is on html */}
-        <Image
-          src="/ctis-logo.png"
-          alt="CTIS Logo"
-          width={160}
-          height={40}
-          className="h-10 w-auto object-contain dark:hidden block"
-          priority
-        />
+    <div className="flex-shrink-0 px-3 pt-3 pb-3">
+      {/* ATC Logo - Text-based, theme-aware */}
+      <div className="flex items-center justify-start py-2 relative h-10">
+        <span className="text-3xl font-black tracking-tight text-foreground">
+          atc<span className="text-red-500">.</span>
+        </span>
       </div>
-
-      {/* Mode Switcher - Government vs Project */}
-      <ModeSwitcher />
     </div>
   );
 };

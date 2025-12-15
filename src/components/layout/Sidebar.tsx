@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Plus, Check } from 'lucide-react';
+import { Plus, Check, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Avatar } from '@/components/ui/Avatar';
@@ -285,6 +285,19 @@ export function Sidebar({
             )}
           </AnimatePresence>
         </div>
+
+        {/* Logout Button */}
+        <button
+          onClick={() => {
+            // For demo purposes, redirect to home or login page
+            router.push('/');
+          }}
+          className="w-full flex items-center gap-2 px-2.5 py-2 mt-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+          title="Logout"
+        >
+          <LogOut className="w-4 h-4" />
+          <span className="text-xs font-medium">Logout</span>
+        </button>
         </div>
       </div>
       </div>
