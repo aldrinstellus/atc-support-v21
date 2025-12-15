@@ -380,6 +380,160 @@ export async function sendEmail(
 }
 
 // ============================================================================
+// Email Signature Configuration (PRD 1.5.1)
+// ============================================================================
+
+/**
+ * Email signature configuration for agents
+ */
+export interface EmailSignatureConfig {
+  enabled: boolean;
+  name: string;
+  title?: string;
+  department?: string;
+  company: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  logoUrl?: string;
+  customHtml?: string;
+  socialLinks?: {
+    linkedin?: string;
+    twitter?: string;
+  };
+}
+
+/**
+ * Default email signature configuration
+ */
+const DEFAULT_SIGNATURE_CONFIG: EmailSignatureConfig = {
+  enabled: true,
+  name: '',
+  title: 'Support Agent',
+  department: 'Customer Support',
+  company: 'ATC Support',
+  website: 'https://atc-support.com',
+};
+
+// In-memory signature storage (per agent/user)
+const signatureStorage: Map<string, EmailSignatureConfig> = new Map();
+
+/**
+ * Get email signature for an agent
+ */
+export function getEmailSignature(agentId: string): EmailSignatureConfig {
+  return signatureStorage.get(agentId) || { ...DEFAULT_SIGNATURE_CONFIG };
+}
+
+/**
+ * Save email signature for an agent
+ */
+export function saveEmailSignature(agentId: string, config: Partial<EmailSignatureConfig>): EmailSignatureConfig {
+  const existing = getEmailSignature(agentId);
+  const updated: EmailSignatureConfig = {
+    ...existing,
+    ...config,
+  };
+  signatureStorage.set(agentId, updated);
+  return updated;
+}
+
+/**
+ * Generate HTML signature block
+ */
+export function generateSignatureHtml(config: EmailSignatureConfig): string {
+  if (!config.enabled) {
+    return '';
+  }
+
+  // If custom HTML provided, use it
+  if (config.customHtml) {
+    return config.customHtml;
+  }
+
+  // Build standard signature
+  const lines: string[] = [];
+
+  lines.push('<div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e5e5; font-family: Arial, sans-serif; font-size: 12px; color: #666;">');
+
+  // Name and title
+  if (config.name) {
+    lines.push(`<p style="margin: 0 0 4px 0; font-weight: 600; color: #333; font-size: 14px;">${config.name}</p>`);
+  }
+  if (config.title) {
+    lines.push(`<p style="margin: 0 0 2px 0;">${config.title}</p>`);
+  }
+  if (config.department) {
+    lines.push(`<p style="margin: 0 0 8px 0;">${config.department}</p>`);
+  }
+
+  // Company info
+  lines.push(`<p style="margin: 0 0 4px 0; font-weight: 600; color: #333;">${config.company}</p>`);
+
+  // Contact details
+  if (config.phone) {
+    lines.push(`<p style="margin: 0 0 2px 0;">Phone: ${config.phone}</p>`);
+  }
+  if (config.email) {
+    lines.push(`<p style="margin: 0 0 2px 0;">Email: <a href="mailto:${config.email}" style="color: #0066cc;">${config.email}</a></p>`);
+  }
+  if (config.website) {
+    lines.push(`<p style="margin: 0 0 8px 0;">Web: <a href="${config.website}" style="color: #0066cc;">${config.website}</a></p>`);
+  }
+
+  // Social links
+  if (config.socialLinks?.linkedin || config.socialLinks?.twitter) {
+    const socialParts: string[] = [];
+    if (config.socialLinks.linkedin) {
+      socialParts.push(`<a href="${config.socialLinks.linkedin}" style="color: #0077b5;">LinkedIn</a>`);
+    }
+    if (config.socialLinks.twitter) {
+      socialParts.push(`<a href="${config.socialLinks.twitter}" style="color: #1da1f2;">Twitter</a>`);
+    }
+    lines.push(`<p style="margin: 0;">${socialParts.join(' | ')}</p>`);
+  }
+
+  // Logo
+  if (config.logoUrl) {
+    lines.push(`<img src="${config.logoUrl}" alt="${config.company}" style="max-width: 120px; height: auto; margin-top: 8px;" />`);
+  }
+
+  lines.push('</div>');
+
+  return lines.join('\n');
+}
+
+/**
+ * Append signature to email content
+ */
+export function appendSignature(content: string, agentId: string): string {
+  const signature = getEmailSignature(agentId);
+  const signatureHtml = generateSignatureHtml(signature);
+
+  if (!signatureHtml) {
+    return content;
+  }
+
+  return `${content}\n\n${signatureHtml}`;
+}
+
+/**
+ * Reset signature to default
+ */
+export function resetEmailSignature(agentId: string): EmailSignatureConfig {
+  const defaultConfig = { ...DEFAULT_SIGNATURE_CONFIG };
+  signatureStorage.set(agentId, defaultConfig);
+  return defaultConfig;
+}
+
+/**
+ * Delete signature for an agent
+ */
+export function deleteEmailSignature(agentId: string): boolean {
+  return signatureStorage.delete(agentId);
+}
+
+// ============================================================================
 // Demo Data
 // ============================================================================
 

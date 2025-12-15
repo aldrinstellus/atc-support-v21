@@ -16,11 +16,14 @@ import {
   MessageSquare,
   User,
   Bot,
+  Loader2,
+  Mail,
 } from 'lucide-react';
 import type { DraftReviewData } from '@/types/widget';
 import { getConfidenceColor, getConfidenceLevel } from '@/types/draft';
 import type { DraftTone, DraftVersion } from '@/types/draft';
-import { RichTextEditor, VersionHistoryPanel, ReadabilityScore } from '@/components/editor';
+import { RichTextEditor, VersionHistoryPanel, ReadabilityScore, AttachmentPicker } from '@/components/editor';
+import type { EmailAttachment } from '@/types/email';
 
 interface DraftReviewWidgetProps {
   data: DraftReviewData;
@@ -33,6 +36,12 @@ export function DraftReviewWidget({ data, onAction }: DraftReviewWidgetProps) {
   const [selectedTone, setSelectedTone] = useState<DraftTone>(data.tone || 'friendly');
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
+  // PRD 1.3.4: Send confirmation dialog & duplicate prevention
+  const [showSendConfirmation, setShowSendConfirmation] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  // PRD 1.5.1: Attachment management
+  const [attachments, setAttachments] = useState<EmailAttachment[]>([]);
 
   const statusColors: Record<string, string> = {
     GENERATING: 'border-chart-3/30 bg-lime-500/20 text-chart-3',
@@ -82,10 +91,36 @@ export function DraftReviewWidget({ data, onAction }: DraftReviewWidgetProps) {
     });
   };
 
-  const handleSend = () => {
-    onAction?.('send', {
-      draftId: data.draftId,
-    });
+  // PRD 1.3.4: Send with confirmation dialog and duplicate prevention
+  const handleSend = async () => {
+    // Show confirmation dialog first
+    if (!showSendConfirmation) {
+      setShowSendConfirmation(true);
+      setSendError(null);
+      return;
+    }
+
+    // Prevent duplicate sends
+    if (isSending) return;
+
+    setIsSending(true);
+    setSendError(null);
+
+    try {
+      await onAction?.('send', {
+        draftId: data.draftId,
+      });
+      setShowSendConfirmation(false);
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : 'Failed to send email');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const cancelSend = () => {
+    setShowSendConfirmation(false);
+    setSendError(null);
   };
 
   const handleCopyToClipboard = async () => {
@@ -350,6 +385,75 @@ export function DraftReviewWidget({ data, onAction }: DraftReviewWidgetProps) {
         />
       )}
 
+      {/* PRD 1.5.1: Attachment Picker */}
+      {(data.status === 'APPROVED' || data.status === 'PENDING_REVIEW' || data.status === 'IN_REVIEW') && (
+        <AttachmentPicker
+          draftId={data.draftId}
+          attachments={attachments}
+          onAttachmentsChange={setAttachments}
+          disabled={isSending}
+        />
+      )}
+
+      {/* PRD 1.3.4: Send Confirmation Dialog */}
+      {showSendConfirmation && (
+        <div className="glass-card rounded-lg border border-primary/30 bg-primary/10 p-4 backdrop-blur-md">
+          <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <Mail className="h-4 w-4 text-primary" />
+            Confirm Send Email
+          </h4>
+          <div className="space-y-3 mb-4">
+            <p className="text-sm text-muted-foreground">
+              You are about to send this email to:
+            </p>
+            <div className="bg-card/70 rounded p-3 border border-border/50">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">{data.customerName}</span>
+                {data.customerEmail && (
+                  <span className="text-xs text-muted-foreground">({data.customerEmail})</span>
+                )}
+              </div>
+              <div className="mt-2 text-xs text-muted-foreground">
+                Subject: {data.ticketSubject}
+              </div>
+            </div>
+            {sendError && (
+              <div className="flex items-center gap-2 text-destructive text-sm">
+                <AlertCircle className="h-4 w-4" />
+                {sendError}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSend}
+              disabled={isSending}
+              className="flex items-center gap-2 px-4 py-2 rounded font-medium text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  Confirm &amp; Send
+                </>
+              )}
+            </button>
+            <button
+              onClick={cancelSend}
+              disabled={isSending}
+              className="px-4 py-2 rounded font-medium text-sm bg-muted text-muted-foreground hover:bg-muted/80 transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Rejection Form */}
       {showRejectForm && (
         <div className="glass-card rounded-lg border border-destructive/30 bg-destructive/10 p-4 backdrop-blur-md">
@@ -427,10 +531,20 @@ export function DraftReviewWidget({ data, onAction }: DraftReviewWidgetProps) {
           {data.status === 'APPROVED' && (
             <button
               onClick={handleSend}
-              className="flex items-center gap-2 px-4 py-2 rounded font-medium text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              disabled={isSending}
+              className="flex items-center gap-2 px-4 py-2 rounded font-medium text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Send className="h-4 w-4" />
-              Send to Customer
+              {isSending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  Send to Customer
+                </>
+              )}
             </button>
           )}
 

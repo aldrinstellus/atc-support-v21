@@ -1,5 +1,6 @@
 import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
+import MicrosoftEntraID from 'next-auth/providers/microsoft-entra-id';
 import Credentials from 'next-auth/providers/credentials';
 import type { NextAuthConfig } from 'next-auth';
 
@@ -34,6 +35,21 @@ export const authConfig: NextAuthConfig = {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID ?? '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+    }),
+    // PRD 1.2.1: Microsoft Entra ID SSO Provider
+    MicrosoftEntraID({
+      clientId: process.env.AZURE_AD_CLIENT_ID ?? '',
+      clientSecret: process.env.AZURE_AD_CLIENT_SECRET ?? '',
+      // Use issuer for tenant-specific auth (tenantId is set via issuer URL)
+      issuer: process.env.AZURE_AD_TENANT_ID
+        ? `https://login.microsoftonline.com/${process.env.AZURE_AD_TENANT_ID}/v2.0`
+        : undefined,
+      // Allow both work/school accounts and personal Microsoft accounts
+      authorization: {
+        params: {
+          prompt: 'select_account',
+        },
+      },
     }),
     // Demo credentials provider for development
     Credentials({
